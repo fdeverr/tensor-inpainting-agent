@@ -41,7 +41,9 @@ the score.
 
 Day 2 adds Matrix Factorization, CP, and Tucker models whose factors are learned
 as `nn.Parameter` objects through one fixed Trainer. Ground truth from the
-artificially missing region is reserved for final evaluation only.
+artificially missing region is reserved for final evaluation only. Training is
+two-stage: a train/validation split selects `best_step`, then the model is reset
+and fitted for that many steps using every observed pixel.
 
 ```bash
 python3 -m inpainting_research_agent.run_day2 \
@@ -55,3 +57,22 @@ python3 -m inpainting_research_agent.run_day2 \
 
 See [`DAY2_LEARNING.md`](DAY2_LEARNING.md) for the model equations, experiment
 protocol, current baseline results, and exercises.
+
+## Day 3: Hello Agents tools and deterministic workflow
+
+Day 3 wraps the experiment core in six native Hello Agents `Tool` classes and
+executes them through `ToolRegistry`. A persisted state machine fixes the legal
+order, while `TraceLogger` writes JSONL and HTML audit trails. No LLM is used
+yet, and only the final evaluation tool receives ground truth.
+
+```bash
+python3 -m inpainting_research_agent.run_day3 \
+  --image inpainting_research_agent/assets/example.png \
+  --mask-type block \
+  --missing-rate 0.4 \
+  --max-steps 200 \
+  --device auto
+```
+
+See [`DAY3_LEARNING.md`](DAY3_LEARNING.md) for the tool contracts, state
+transitions, trace format, real run results, and exercises.

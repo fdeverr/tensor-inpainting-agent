@@ -17,7 +17,7 @@ from .data import apply_observation_mask, load_rgb_image, save_image, save_mask
 from .interpolation import nearest_neighbor_fill
 from .masks import generate_observation_mask
 from .metrics import composite_ssim, missing_region_mse, missing_region_psnr
-from .trainer import train_tensor_model
+from .trainer import fit_tensor_model_on_all_observations, train_tensor_model
 
 
 def _make_run_id(model_name: str) -> str:
@@ -75,7 +75,7 @@ def run_day2_experiment(config: Day2ExperimentConfig) -> Dict[str, Any]:
     )
 
     interpolation = nearest_neighbor_fill(corrupted, observed_mask)
-    training_output = train_tensor_model(
+    selection_output = train_tensor_model(
         model_name=config.model_name,
         model_hyperparameters=config.model_hyperparameters,
         observed_image=corrupted,
@@ -83,7 +83,19 @@ def run_day2_experiment(config: Day2ExperimentConfig) -> Dict[str, Any]:
         config=config.training,
         seed=config.seed,
     )
-    raw_reconstruction = training_output.reconstruction
+    final_fit_output = fit_tensor_model_on_all_observations(
+        model_name=config.model_name,
+        model_hyperparameters=config.model_hyperparameters,
+        observed_image=corrupted,
+        observed_mask=observed_mask,
+        config=config.training,
+        selected_steps=selection_output.best_step,
+        seed=config.seed,
+    )
+
+    selection_reconstruction = selection_output.reconstruction.copy()
+    selection_reconstruction[observed_mask] = corrupted[observed_mask]
+    raw_reconstruction = final_fit_output.reconstruction
     completed_reconstruction = raw_reconstruction.copy()
     completed_reconstruction[observed_mask] = corrupted[observed_mask]
 
@@ -92,21 +104,27 @@ def run_day2_experiment(config: Day2ExperimentConfig) -> Dict[str, Any]:
         "original": str(run_dir / "original.png"),
         "corrupted": str(run_dir / "corrupted.png"),
         "mask": str(run_dir / "mask.png"),
-        "train_mask": str(run_dir / "train_mask.png"),
-        "validation_mask": str(run_dir / "validation_mask.png"),
+        "selection_train_mask": str(run_dir / "selection_train_mask.png"),
+        "selection_validation_mask": str(run_dir / "selection_validation_mask.png"),
         "interpolated": str(run_dir / "interpolated.png"),
+        "selection_completed": str(run_dir / "selection_completed.png"),
         "model_raw": str(run_dir / "model_raw.png"),
         "model_completed": str(run_dir / "model_completed.png"),
-        "training_history": str(run_dir / "training_history.json"),
+        "selection_history": str(run_dir / "selection_history.json"),
+        "final_fit_history": str(run_dir / "final_fit_history.json"),
         "checkpoint": str(run_dir / "best_model.pt"),
         "metrics": str(run_dir / "metrics.json"),
     }
     save_image(artifact_paths["original"], ground_truth)
     save_image(artifact_paths["corrupted"], corrupted)
     save_mask(artifact_paths["mask"], observed_mask)
-    save_mask(artifact_paths["train_mask"], training_output.train_mask)
-    save_mask(artifact_paths["validation_mask"], training_output.validation_mask)
+    save_mask(artifact_paths["selection_train_mask"], selection_output.train_mask)
+    save_mask(
+        artifact_paths["selection_validation_mask"],
+        selection_output.validation_mask,
+    )
     save_image(artifact_paths["interpolated"], interpolation)
+    save_image(artifact_paths["selection_completed"], selection_reconstruction)
     save_image(artifact_paths["model_raw"], raw_reconstruction)
     save_image(artifact_paths["model_completed"], completed_reconstruction)
     torch.save(
@@ -114,14 +132,20 @@ def run_day2_experiment(config: Day2ExperimentConfig) -> Dict[str, Any]:
             "model_name": config.model_name,
             "model_hyperparameters": config.model_hyperparameters,
             "image_shape": tuple(ground_truth.shape),
-            "state_dict": training_output.state_dict,
-            "best_step": training_output.best_step,
-            "best_validation_mse": training_output.best_validation_mse,
+            "state_dict": final_fit_output.state_dict,
+            "training_phase": "refit_on_all_observations",
+            "selected_steps": selection_output.best_step,
+            "selection_best_validation_mse": selection_output.best_validation_mse,
         },
         artifact_paths["checkpoint"],
     )
 
     interpolation_metrics = _evaluate(interpolation, ground_truth, observed_mask)
+    selection_metrics = _evaluate(
+        selection_reconstruction,
+        ground_truth,
+        observed_mask,
+    )
     model_metrics = _evaluate(completed_reconstruction, ground_truth, observed_mask)
     psnr_delta = None
     if (
@@ -140,15 +164,26 @@ def run_day2_experiment(config: Day2ExperimentConfig) -> Dict[str, Any]:
         "actual_missing_rate": float((~observed_mask).mean()),
         "model_name": config.model_name,
         "model_hyperparameters": config.model_hyperparameters,
-        "training": {
-            "best_step": training_output.best_step,
-            "best_validation_mse": training_output.best_validation_mse,
-            "runtime_seconds": training_output.runtime_seconds,
-            "parameter_count": training_output.parameter_count,
-            "device": training_output.device,
-            "stopped_early": training_output.stopped_early,
+        "selection": {
+            "best_step": selection_output.best_step,
+            "best_validation_mse": selection_output.best_validation_mse,
+            "runtime_seconds": selection_output.runtime_seconds,
+            "parameter_count": selection_output.parameter_count,
+            "device": selection_output.device,
+            "stopped_early": selection_output.stopped_early,
+            "train_observed_pixels": int(selection_output.train_mask.sum()),
+            "validation_observed_pixels": int(selection_output.validation_mask.sum()),
+        },
+        "final_fit": {
+            "fitted_steps": final_fit_output.fitted_steps,
+            "final_train_mse": final_fit_output.final_train_mse,
+            "runtime_seconds": final_fit_output.runtime_seconds,
+            "parameter_count": final_fit_output.parameter_count,
+            "device": final_fit_output.device,
+            "observed_pixels_used": int(final_fit_output.fit_mask.sum()),
         },
         "interpolation": interpolation_metrics,
+        "selection_model_diagnostic": selection_metrics,
         "tensor_model": model_metrics,
         "comparison": {
             "psnr_delta_vs_interpolation": psnr_delta,
@@ -156,12 +191,20 @@ def run_day2_experiment(config: Day2ExperimentConfig) -> Dict[str, Any]:
                 model_metrics["composite_ssim"]
                 - interpolation_metrics["composite_ssim"]
             ),
+            "refit_psnr_delta_vs_selection": (
+                None
+                if model_metrics["missing_psnr"] is None
+                or selection_metrics["missing_psnr"] is None
+                else model_metrics["missing_psnr"]
+                - selection_metrics["missing_psnr"]
+            ),
         },
         "total_runtime_seconds": float(time.perf_counter() - started_at),
         "artifacts": artifact_paths,
         "notes": {
             "ground_truth_usage": "final_evaluation_only",
             "tuning_signal": "held_out_observed_pixels_only",
+            "final_fit": "Selected steps are refit from scratch on 100% of observed pixels.",
             "model_output": "Known pixels in model_completed.png are copied from observations.",
         },
     }
@@ -171,8 +214,12 @@ def run_day2_experiment(config: Day2ExperimentConfig) -> Dict[str, Any]:
     config_payload["resolved_image_shape"] = list(ground_truth.shape)
     _write_json(Path(artifact_paths["config"]), config_payload)
     _write_json(
-        Path(artifact_paths["training_history"]),
-        {"history": training_output.history},
+        Path(artifact_paths["selection_history"]),
+        {"history": selection_output.history},
+    )
+    _write_json(
+        Path(artifact_paths["final_fit_history"]),
+        {"history": final_fit_output.history},
     )
     _write_json(Path(artifact_paths["metrics"]), payload)
     return payload

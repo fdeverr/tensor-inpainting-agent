@@ -34,6 +34,21 @@ class TrainingOutput:
     state_dict: Dict[str, torch.Tensor]
 
 
+@dataclass
+class FinalFitOutput:
+    """Result of refitting a selected configuration on every observed pixel."""
+
+    reconstruction: np.ndarray
+    history: List[Dict[str, Any]]
+    fitted_steps: int
+    final_train_mse: float
+    runtime_seconds: float
+    parameter_count: int
+    device: str
+    fit_mask: np.ndarray
+    state_dict: Dict[str, torch.Tensor]
+
+
 def resolve_device(requested_device: str) -> torch.device:
     """Resolve ``auto`` to CUDA on Linux servers and CPU otherwise."""
 
@@ -199,5 +214,100 @@ def train_tensor_model(
         stopped_early=stopped_early,
         train_mask=train_mask_np,
         validation_mask=validation_mask_np,
+        state_dict=checkpoint_state,
+    )
+
+
+def fit_tensor_model_on_all_observations(
+    model_name: str,
+    model_hyperparameters: Dict[str, Any],
+    observed_image: np.ndarray,
+    observed_mask: np.ndarray,
+    config: TrainingConfig,
+    selected_steps: int,
+    seed: int,
+) -> FinalFitOutput:
+    """Refit a selected model using 100% of the genuinely observed pixels.
+
+    This function performs no validation and receives no missing-region ground
+    truth. ``selected_steps`` must be chosen before this call, normally by
+    ``train_tensor_model`` on a temporary train/validation split.
+    """
+
+    config.validate()
+    _validate_training_arrays(observed_image, observed_mask)
+    if selected_steps < 1:
+        raise ValueError("selected_steps must be positive")
+
+    set_reproducibility(seed, config.deterministic)
+    device = resolve_device(config.device)
+    initial_channel_mean = observed_image[observed_mask].mean(axis=0)
+    model = create_model(
+        model_name=model_name,
+        image_shape=tuple(observed_image.shape),
+        initial_channel_mean=initial_channel_mean,
+        hyperparameters=model_hyperparameters,
+    ).to(device)
+    observed = torch.as_tensor(observed_image, dtype=torch.float32, device=device)
+    fit_mask = torch.as_tensor(observed_mask, dtype=torch.bool, device=device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
+    history = []
+    started_at = time.perf_counter()
+
+    for step in range(1, selected_steps + 1):
+        model.train()
+        optimizer.zero_grad(set_to_none=True)
+        prediction = model()
+        loss_terms = model.loss_terms(prediction, observed, fit_mask)
+        total_loss = sum(loss_terms.values())
+        if not bool(torch.isfinite(total_loss)):
+            raise FloatingPointError("final-fit loss became NaN or Inf at step %d" % step)
+        total_loss.backward()
+        for parameter in model.parameters():
+            if parameter.grad is not None and not bool(torch.isfinite(parameter.grad).all()):
+                raise FloatingPointError(
+                    "final-fit gradient became NaN or Inf at step %d" % step
+                )
+        optimizer.step()
+
+        should_record = (
+            step == 1
+            or step % config.validation_interval == 0
+            or step == selected_steps
+        )
+        if not should_record:
+            continue
+        model.eval()
+        with torch.no_grad():
+            current_prediction = model()
+            current_terms = model.loss_terms(current_prediction, observed, fit_mask)
+        history.append(
+            {
+                "step": step,
+                "total_train_loss": float(sum(current_terms.values()).item()),
+                "data_train_loss": float(current_terms["data_loss"].item()),
+            }
+        )
+
+    model.eval()
+    with torch.no_grad():
+        final_prediction = model()
+        final_terms = model.loss_terms(final_prediction, observed, fit_mask)
+        reconstruction = (
+            final_prediction.clamp(0.0, 1.0).detach().cpu().numpy().astype(np.float32)
+        )
+    checkpoint_state = {
+        name: value.detach().cpu().clone() for name, value in model.state_dict().items()
+    }
+
+    return FinalFitOutput(
+        reconstruction=reconstruction,
+        history=history,
+        fitted_steps=selected_steps,
+        final_train_mse=float(final_terms["data_loss"].item()),
+        runtime_seconds=float(time.perf_counter() - started_at),
+        parameter_count=sum(parameter.numel() for parameter in model.parameters()),
+        device=str(device),
+        fit_mask=observed_mask.copy(),
         state_dict=checkpoint_state,
     )

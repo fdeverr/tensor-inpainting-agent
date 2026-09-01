@@ -173,6 +173,7 @@ M_train ∩ M_val = ∅
 
 - 模型拟合只使用 `M_train`。
 - 超参选择只使用 `M_val` 上的重建误差。
+- 选出最优超参数和训练步数后，重置模型并在 `M_train ∪ M_val` 上完成最终拟合。
 - 人工遮挡区域 Ground Truth 只在所有训练和调参完成后，用于最终报告。
 - 图像分析和 VLM 只能看到 corrupted image、mask 和插值结果，不能看到完整图。
 
@@ -464,7 +465,8 @@ CREATED
 | `retrieve_method_knowledge` | profile、query | 文档片段 | 否 |
 | `select_tensor_method` | profile、知识片段 | `MethodPlan` | 是 |
 | `tune_tensor_model` | method、search space、预算 | best config | 否 |
-| `train_tensor_model` | model、config、mask | checkpoint、曲线 | 否 |
+| `train_tensor_model` | model、config、mask | 选择阶段 checkpoint、曲线、best step | 否 |
+| `fit_tensor_model_on_all_observations` | model、best config、best step、observed mask | 最终 checkpoint、曲线 | 否 |
 | `evaluate_reconstruction` | reconstruction、GT | final metrics | 否 |
 | `propose_candidate` | base code、profile、metrics、feedback | `CandidateProposal` | 是 |
 | `validate_candidate` | candidate package | validation report | 否 |
@@ -632,6 +634,7 @@ V ∈ R^(R×(W·C))
    - NaN/Inf 检测；
    - checkpoint 与重建图保存。
 6. 从 observed mask 中划出 `M_train` 和 `M_val`。
+7. 用 `M_val` 选择 `best_step` 后重置模型，并在完整 observed mask 上重新拟合。
 
 ##### CP 与 Tucker
 
@@ -667,6 +670,7 @@ python -m inpainting_research_agent.core.run_experiment --model tucker
 - [ ] 三个模型均能完成训练。
 - [ ] 训练 loss 只使用 `M_train`。
 - [ ] `M_val` 只用于早停或超参选择。
+- [ ] 最终模型重置后使用 `M_train ∪ M_val` 拟合，不再执行验证早停。
 - [ ] 最终缺失区域指标只在训练结束后计算。
 - [ ] 模型输出 shape 和输入图一致。
 - [ ] 参数全部出现在 `model.parameters()` 中。
@@ -1436,6 +1440,7 @@ metric-gated candidate promotion.
 
 - [ ] Matrix、CP、Tucker 使用统一接口训练。
 - [ ] train/validation/final evaluation 隔离。
+- [ ] 选择结束后使用全部观测像素完成 final refit。
 
 ### Day 3
 

@@ -68,6 +68,19 @@ def save_mask(path: str, observed_mask: np.ndarray) -> None:
     Image.fromarray(mask_image).save(destination)
 
 
+def load_observation_mask(path: str) -> np.ndarray:
+    """Load a saved mask using the project convention white=observed."""
+
+    source = Path(path)
+    if not source.is_file():
+        raise ValueError("mask file does not exist: %s" % source)
+    with Image.open(source) as mask_image:
+        mask = np.asarray(mask_image.convert("L"), dtype=np.uint8) >= 128
+    if mask.ndim != 2 or not mask.any() or mask.all():
+        raise ValueError("mask must contain both observed and missing pixels")
+    return mask.astype(np.bool_)
+
+
 def apply_observation_mask(
     image: np.ndarray,
     observed_mask: np.ndarray,

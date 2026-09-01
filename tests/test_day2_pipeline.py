@@ -48,9 +48,12 @@ def test_day2_pipeline_writes_model_and_interpolation_results(tmp_path):
 
     assert result["status"] == "success"
     assert result["model_name"] == "matrix"
-    assert result["training"]["best_step"] >= 1
-    assert result["training"]["parameter_count"] > 0
+    assert result["selection"]["best_step"] >= 1
+    assert result["selection"]["parameter_count"] > 0
+    assert result["final_fit"]["fitted_steps"] == result["selection"]["best_step"]
+    assert result["final_fit"]["observed_pixels_used"] == round(12 * 16 * 0.7)
     assert result["interpolation"]["missing_psnr"] is not None
+    assert result["selection_model_diagnostic"]["missing_psnr"] is not None
     assert result["tensor_model"]["missing_psnr"] is not None
     for artifact_path in result["artifacts"].values():
         assert Path(artifact_path).is_file()
@@ -59,3 +62,4 @@ def test_day2_pipeline_writes_model_and_interpolation_results(tmp_path):
         saved = json.load(metrics_file)
     assert saved["notes"]["ground_truth_usage"] == "final_evaluation_only"
     assert saved["notes"]["tuning_signal"] == "held_out_observed_pixels_only"
+    assert "100% of observed pixels" in saved["notes"]["final_fit"]

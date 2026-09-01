@@ -1,0 +1,6 @@
+seed: 42
+image_size: 128
+mask_type: block
+missing_rate: 0.4
+missing_fill_value: 0.0
+

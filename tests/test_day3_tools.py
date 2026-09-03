@@ -99,6 +99,12 @@ def test_day3_workflow_runs_all_tools_and_preserves_gt_boundary(tmp_path):
     assert state["stage"] == "COMPLETED"
     assert state["last_successful_stage"] == "COMPLETED"
     assert state["results"]["selected_trial"]["best_step"] >= 1
+    profile = state["results"]["image_profile"]
+    assert profile["missing_component_count"] >= 1
+    assert 0.0 < profile["largest_missing_component_image_ratio"] < 1.0
+    assert 0.0 <= profile["visible_mean_absolute_channel_correlation"] <= 1.0
+    assert 0.0 <= profile["visible_local_smoothness_score"] <= 1.0
+    assert profile["visible_high_frequency_energy_ratio"] >= 0.0
     assert state["results"]["training"]["observed_pixels_used"] == round(
         12 * 16 * 0.7
     )

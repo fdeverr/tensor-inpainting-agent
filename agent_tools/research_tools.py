@@ -85,6 +85,98 @@ def _metric_payload(
     }
 
 
+def _missing_component_statistics(observed_mask: np.ndarray) -> tuple:
+    """Return component count and largest-hole share using 4-connectivity."""
+
+    missing = ~observed_mask
+    visited = np.zeros_like(missing, dtype=np.bool_)
+    component_sizes = []
+    height, width = missing.shape
+    for start_y, start_x in np.argwhere(missing):
+        if visited[start_y, start_x]:
+            continue
+        stack = [(int(start_y), int(start_x))]
+        visited[start_y, start_x] = True
+        size = 0
+        while stack:
+            y, x = stack.pop()
+            size += 1
+            for next_y, next_x in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
+                if (
+                    0 <= next_y < height
+                    and 0 <= next_x < width
+                    and missing[next_y, next_x]
+                    and not visited[next_y, next_x]
+                ):
+                    visited[next_y, next_x] = True
+                    stack.append((next_y, next_x))
+        component_sizes.append(size)
+    largest = max(component_sizes) if component_sizes else 0
+    return len(component_sizes), float(largest / missing.size)
+
+
+def _visible_structure_statistics(
+    image: np.ndarray,
+    observed_mask: np.ndarray,
+) -> Dict[str, Any]:
+    """Compute structure features without sampling artificially hidden values."""
+
+    visible_pixels = image[observed_mask]
+    if np.all(visible_pixels.std(axis=0) > 1e-8):
+        correlation_matrix = np.corrcoef(visible_pixels, rowvar=False)
+        correlation_matrix = np.nan_to_num(correlation_matrix, nan=0.0)
+    else:
+        correlation_matrix = np.eye(3, dtype=np.float64)
+    off_diagonal = correlation_matrix[np.triu_indices(3, k=1)]
+
+    horizontal_pairs = observed_mask[:, 1:] & observed_mask[:, :-1]
+    vertical_pairs = observed_mask[1:, :] & observed_mask[:-1, :]
+    absolute_differences = []
+    squared_gray_differences = []
+    gray = (
+        0.299 * image[..., 0]
+        + 0.587 * image[..., 1]
+        + 0.114 * image[..., 2]
+    )
+    if horizontal_pairs.any():
+        absolute_differences.append(
+            np.abs(image[:, 1:] - image[:, :-1])[horizontal_pairs]
+        )
+        squared_gray_differences.append(
+            np.square(gray[:, 1:] - gray[:, :-1])[horizontal_pairs]
+        )
+    if vertical_pairs.any():
+        absolute_differences.append(
+            np.abs(image[1:, :] - image[:-1, :])[vertical_pairs]
+        )
+        squared_gray_differences.append(
+            np.square(gray[1:, :] - gray[:-1, :])[vertical_pairs]
+        )
+    mean_local_difference = (
+        float(np.concatenate(absolute_differences).mean())
+        if absolute_differences
+        else 0.0
+    )
+    high_frequency_energy = (
+        float(np.concatenate(squared_gray_differences).mean())
+        if squared_gray_differences
+        else 0.0
+    )
+    visible_gray_energy = float(np.square(gray[observed_mask]).mean())
+    high_frequency_ratio = high_frequency_energy / (visible_gray_energy + 1e-12)
+    return {
+        "visible_channel_correlation_matrix": correlation_matrix.tolist(),
+        "visible_mean_absolute_channel_correlation": float(
+            np.abs(off_diagonal).mean()
+        ),
+        "visible_mean_local_absolute_difference": mean_local_difference,
+        "visible_local_smoothness_score": float(
+            np.clip(1.0 - 4.0 * mean_local_difference, 0.0, 1.0)
+        ),
+        "visible_high_frequency_energy_ratio": float(high_frequency_ratio),
+    }
+
+
 def _default_candidates(model_name: str) -> List[Dict[str, Any]]:
     if model_name == "matrix":
         return [
@@ -202,21 +294,12 @@ class AnalyzeImageTool(ResearchTool):
             save_mask(str(mask_path), observed_mask)
 
             visible_pixels = ground_truth[observed_mask]
-            horizontal_pairs = observed_mask[:, 1:] & observed_mask[:, :-1]
-            vertical_pairs = observed_mask[1:, :] & observed_mask[:-1, :]
-            local_differences = []
-            if horizontal_pairs.any():
-                local_differences.append(
-                    np.abs(ground_truth[:, 1:] - ground_truth[:, :-1])[horizontal_pairs]
-                )
-            if vertical_pairs.any():
-                local_differences.append(
-                    np.abs(ground_truth[1:, :] - ground_truth[:-1, :])[vertical_pairs]
-                )
-            mean_local_difference = (
-                float(np.concatenate(local_differences).mean())
-                if local_differences
-                else 0.0
+            component_count, largest_hole_ratio = _missing_component_statistics(
+                observed_mask
+            )
+            structure_statistics = _visible_structure_statistics(
+                ground_truth,
+                observed_mask,
             )
             profile = {
                 "run_id": run_id,
@@ -226,9 +309,12 @@ class AnalyzeImageTool(ResearchTool):
                 "actual_missing_rate": float((~observed_mask).mean()),
                 "observed_pixels": int(observed_mask.sum()),
                 "missing_pixels": int((~observed_mask).sum()),
+                "missing_component_count": component_count,
+                "largest_missing_component_image_ratio": largest_hole_ratio,
+                "image_aspect_ratio": float(max(height, width) / min(height, width)),
                 "visible_channel_mean": visible_pixels.mean(axis=0).tolist(),
                 "visible_channel_std": visible_pixels.std(axis=0).tolist(),
-                "visible_mean_local_absolute_difference": mean_local_difference,
+                **structure_statistics,
                 "analysis_scope": "visible_pixels_only",
             }
             _write_json(profile_path, profile)

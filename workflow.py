@@ -24,9 +24,9 @@ STAGES = (
 )
 
 
-def _make_run_id() -> str:
+def _make_run_id(prefix: str = "day3") -> str:
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return "day3-%s-%s" % (timestamp, uuid.uuid4().hex[:6])
+    return "%s-%s-%s" % (prefix, timestamp, uuid.uuid4().hex[:6])
 
 
 def _write_json(path: Path, payload: Dict[str, Any]) -> None:
@@ -78,10 +78,14 @@ class WorkflowExecutionError(RuntimeError):
 class Day3Workflow:
     """Call registered tools in a fixed, auditable order without an LLM."""
 
+    run_prefix = "day3"
+    workflow_name = "day3_deterministic_research_workflow"
+    llm_used = False
+
     def __init__(self, config: Day3WorkflowConfig) -> None:
         config.validate()
         self.config = config
-        self.run_id = _make_run_id()
+        self.run_id = _make_run_id(self.run_prefix)
         self.run_dir = Path(config.output_dir) / self.run_id
         self.run_dir.mkdir(parents=True, exist_ok=False)
         self.state_path = self.run_dir / "state.json"
@@ -199,6 +203,28 @@ class Day3Workflow:
             step=self.step,
         )
 
+    def _select_method(self) -> Dict[str, Any]:
+        """Day 3 hook: use the deliberately fixed Tucker decision."""
+
+        return {
+            "method": self.config.model_name,
+            "reason": "Day 3 fixes the method so the tool workflow can be tested without an LLM.",
+            "evidence": [],
+            "confidence": 1.0,
+            "suggested_hyperparameters": {},
+            "risks": ["This is a workflow test, not a data-dependent method decision."],
+            "selection_mode": "fixed_day3",
+        }
+
+    def _tuning_candidates(
+        self,
+        selected_model: str,
+        method_plan: Dict[str, Any],
+    ) -> Optional[List[Dict[str, Any]]]:
+        """Hook used by Day 4 to turn a validated plan into a small grid."""
+
+        return self.config.candidates
+
     def run(self) -> Dict[str, Any]:
         """Execute all Day 3 stages and return the persisted final state."""
 
@@ -206,8 +232,8 @@ class Day3Workflow:
             "session_start",
             {
                 "run_id": self.run_id,
-                "workflow": "day3_deterministic_research_workflow",
-                "llm_used": False,
+                "workflow": self.workflow_name,
+                "llm_used": self.llm_used,
             },
         )
         try:
@@ -247,13 +273,34 @@ class Day3Workflow:
             ]["reconstruction"]
             self._transition("ANALYZED", "INTERPOLATED")
 
+            method_plan = self._select_method()
+            selected_model = method_plan["method"]
+            if selected_model not in {"matrix", "cp", "tucker"}:
+                raise WorkflowExecutionError(
+                    "method selector returned unsupported model %r" % selected_model
+                )
+            self.state["selected_model"] = selected_model
+            self.state["results"]["method_plan"] = method_plan
+            self._save_state()
+            self.trace.log_event(
+                "method_selection",
+                {
+                    "method": selected_model,
+                    "reason": method_plan["reason"],
+                    "evidence": method_plan["evidence"],
+                    "confidence": method_plan["confidence"],
+                    "selection_mode": method_plan["selection_mode"],
+                },
+                step=self.step,
+            )
+
             tuning_path = self.run_dir / "tuning_result.json"
             tuning_parameters = {
                 "run_id": self.run_id,
                 "corrupted_path": self.state["artifacts"]["corrupted"],
                 "mask_path": self.state["artifacts"]["mask"],
                 "output_path": str(tuning_path),
-                "model_name": self.config.model_name,
+                "model_name": selected_model,
                 "seed": self.config.seed,
                 "max_steps": self.config.max_steps,
                 "validation_ratio": self.config.validation_ratio,
@@ -261,8 +308,12 @@ class Day3Workflow:
                 "patience": self.config.patience,
                 "device": self.config.device,
             }
-            if self.config.candidates is not None:
-                tuning_parameters["candidates"] = self.config.candidates
+            tuning_candidates = self._tuning_candidates(
+                selected_model,
+                method_plan,
+            )
+            if tuning_candidates is not None:
+                tuning_parameters["candidates"] = tuning_candidates
             tuning = self._call_tool("tune_tensor_model", tuning_parameters)
             self.state["artifacts"]["tuning_result"] = tuning.data["artifacts"][
                 "tuning_result"
@@ -278,7 +329,7 @@ class Day3Workflow:
                     "corrupted_path": self.state["artifacts"]["corrupted"],
                     "mask_path": self.state["artifacts"]["mask"],
                     "output_dir": str(self.run_dir / "tensor_model"),
-                    "model_name": self.config.model_name,
+                    "model_name": selected_model,
                     "hyperparameters": best["hyperparameters"],
                     "learning_rate": best["learning_rate"],
                     "selected_steps": best["best_step"],
@@ -327,7 +378,7 @@ class Day3Workflow:
                 {
                     "run_id": self.run_id,
                     "algorithm_name": "%s_tensor_decomposition"
-                    % self.config.model_name,
+                    % selected_model,
                     "reconstruction_path": self.state["artifacts"][
                         "tensor_reconstruction"
                     ],

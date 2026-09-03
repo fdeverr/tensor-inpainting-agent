@@ -76,3 +76,23 @@ python3 -m inpainting_research_agent.run_day3 \
 
 See [`DAY3_LEARNING.md`](DAY3_LEARNING.md) for the tool contracts, state
 transitions, trace format, real run results, and exercises.
+
+## Day 4: retrieval-augmented method selection
+
+Day 4 enriches the visible-only image profile, retrieves sourced evidence from
+local Matrix/CP/Tucker knowledge documents, and emits a Pydantic-validated
+`MethodPlan`. An optional Hello Agents LLM gets one JSON repair attempt; missing
+or repeatedly invalid LLM output falls back to deterministic weighted rules.
+
+```bash
+python3 -m inpainting_research_agent.run_day4 \
+  --image inpainting_research_agent/assets/example.png \
+  --mask-type block \
+  --missing-rate 0.4 \
+  --llm-mode auto \
+  --device auto
+```
+
+See [`DAY4_LEARNING.md`](DAY4_LEARNING.md) for ImageProfile definitions,
+retrieval logic, MethodPlan validation, LLM configuration, failure recovery,
+real results, and exercises.

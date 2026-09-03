@@ -21,6 +21,7 @@ except ModuleNotFoundError as error:
         sys.path.insert(0, str(repository_parent))
 
 from hello_agents.observability.trace_logger import TraceLogger
+from hello_agents.core.llm import HelloAgentsLLM
 from hello_agents.tools.base import Tool, ToolParameter
 from hello_agents.tools.errors import ToolErrorCode
 from hello_agents.tools.registry import ToolRegistry
@@ -34,4 +35,5 @@ __all__ = [
     "ToolResponse",
     "ToolStatus",
     "TraceLogger",
+    "HelloAgentsLLM",
 ]

@@ -3,4 +3,5 @@ __pycache__/
 ._*
 outputs/*
 !outputs/.gitkeep
+.env
 

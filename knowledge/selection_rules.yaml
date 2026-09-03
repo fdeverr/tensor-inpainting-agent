@@ -1,0 +1,54 @@
+rules:
+  - condition: block_missing
+    prefer: tucker
+    weight: 2.0
+    reason: Tucker's separate spatial ranks are a flexible baseline for a contiguous hole.
+    keywords: [block, contiguous, spatial, hole]
+
+  - condition: random_missing
+    prefer: matrix
+    weight: 1.5
+    reason: Matrix factorization is a strong simple baseline when observations are dispersed.
+    keywords: [random, dispersed, matrix, observed]
+
+  - condition: channel_correlation_high
+    prefer: tucker
+    weight: 2.5
+    reason: Tucker can allocate a small channel rank while retaining separate spatial ranks.
+    keywords: [channel, correlation, RGB, channel rank]
+
+  - condition: channel_correlation_low
+    prefer: cp
+    weight: 1.0
+    reason: CP preserves explicit image modes without assuming a compressed Tucker channel core.
+    keywords: [channel, CP, mode, rank one]
+
+  - condition: large_contiguous_hole
+    prefer: tucker
+    weight: 2.0
+    reason: A dominant hole calls for the more expressive global interaction core, while still warning about extrapolation risk.
+    keywords: [large hole, block, core, extrapolation]
+
+  - condition: many_small_holes
+    prefer: cp
+    weight: 1.5
+    reason: CP is parameter-efficient when many missing pixels remain surrounded by observations.
+    keywords: [many holes, random, parameter efficient, CP]
+
+  - condition: image_aspect_ratio_high
+    prefer: tucker
+    weight: 1.5
+    reason: Tucker supports unequal height and width ranks for anisotropic images.
+    keywords: [aspect ratio, anisotropic, height rank, width rank]
+
+  - condition: local_smoothness_high
+    prefer: matrix
+    weight: 1.0
+    reason: A simple global low-rank unfolding is often sufficient for very smooth visible structure.
+    keywords: [smooth, low rank, matrix, global]
+
+  - condition: high_frequency_high
+    prefer: tucker
+    weight: 1.0
+    reason: Tucker offers more flexible spatial capacity, although later spatial priors may still be needed.
+    keywords: [high frequency, texture, spatial rank, Tucker]

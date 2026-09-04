@@ -96,3 +96,22 @@ python3 -m inpainting_research_agent.run_day4 \
 See [`DAY4_LEARNING.md`](DAY4_LEARNING.md) for ImageProfile definitions,
 retrieval logic, MethodPlan validation, LLM configuration, failure recovery,
 real results, and exercises.
+
+## Day 5: constrained candidate generation and validation
+
+Day 5 feeds a completed Day 4 run into a schema-constrained Model Improver. It
+stores a hypothesis, bounded search space, complete candidate class, manifest,
+and structured validation. AST policy checks run before an isolated-process
+forward/backward/optimizer smoke test. Only candidates passing both checks are
+marked `eligible_for_training`.
+
+```bash
+python3 -m inpainting_research_agent.run_day5 \
+  --base-run-dir inpainting_research_agent/outputs/<day4-run-id> \
+  --llm-mode auto \
+  --smoke-timeout 10
+```
+
+See [`DAY5_LEARNING.md`](DAY5_LEARNING.md) for the proposal contract, TV
+candidate hypothesis, AST policy, smoke-test stages, safety limitations,
+manifest gate, real validation result, and exercises.

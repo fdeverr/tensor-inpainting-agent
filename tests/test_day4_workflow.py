@@ -8,6 +8,10 @@ from inpainting_research_agent.workflow_day4 import (
     Day4WorkflowConfig,
     run_day4_workflow,
 )
+from inpainting_research_agent.workflow_day5 import (
+    Day5WorkflowConfig,
+    run_day5_workflow,
+)
 
 
 def _write_small_image(path: Path) -> None:
@@ -53,3 +57,18 @@ def test_day4_fallback_selects_and_trains_a_valid_method(tmp_path):
     trace_text = Path(state["artifacts"]["trace_jsonl"]).read_text()
     assert '"event": "method_selection"' in trace_text
     assert "evaluation_ground_truth" not in trace_text
+
+    day5_state = run_day5_workflow(
+        Day5WorkflowConfig(
+            base_run_dir=state["artifacts"]["run_dir"],
+            candidate_root=str(tmp_path / "algorithms" / "candidates"),
+            output_dir=str(tmp_path / "outputs"),
+            llm_mode="off",
+            smoke_timeout_seconds=10,
+        )
+    )
+    assert day5_state["stage"] == "VALIDATED"
+    assert day5_state["validation"]["eligible_for_training"] is True
+    manifest = json.loads(Path(day5_state["artifacts"]["manifest"]).read_text())
+    assert manifest["validation_status"] == "validated"
+    assert manifest["eligible_for_training"] is True

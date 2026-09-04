@@ -1,0 +1,21 @@
+{
+  "candidate_id": "candidate-20260903-151313-6d4d12",
+  "base_run_id": "day4-20260901-160623-fcda33",
+  "base_method": "tucker",
+  "created_at": "2026-09-03T15:13:13.257381",
+  "generation_mode": "deterministic_template",
+  "llm_model": null,
+  "prompt_version": "day5-candidate-v1",
+  "code_sha256": "b336c1b3208c0fbb0f32b0c85b23563ea9ab8d78cb401076017a04f1bad9a00e",
+  "validation_status": "validated",
+  "allowed_search_space": {
+    "tv_weight": [
+      0.0,
+      0.0001,
+      0.0005,
+      0.001
+    ]
+  },
+  "eligible_for_training": true,
+  "validated_at": "2026-09-03T15:13:16.729225"
+}

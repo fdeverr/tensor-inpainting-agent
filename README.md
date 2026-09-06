@@ -115,3 +115,27 @@ python3 -m inpainting_research_agent.run_day5 \
 See [`DAY5_LEARNING.md`](DAY5_LEARNING.md) for the proposal contract, TV
 candidate hypothesis, AST policy, smoke-test stages, safety limitations,
 manifest gate, real validation result, and exercises.
+
+## Day 6: fair experiments and bounded self-improvement
+
+Day 6 evaluates the baseline and candidate with paired hyperparameters and
+equal budgets. Tuning has no ground-truth input; hidden pixels are evaluated
+only after configuration selection and all-observed refitting. A deterministic
+judge either promotes the candidate into a versioned registry or returns
+structured failure feedback for at most one additional round.
+
+```bash
+python3 -m inpainting_research_agent.run_day6 \
+  --base-run-dir inpainting_research_agent/outputs/<day4-run-id> \
+  --candidate-dir inpainting_research_agent/algorithms/candidates/<candidate-id> \
+  --llm-mode off \
+  --tuning-trials 4 \
+  --max-improvement-rounds 2 \
+  --device auto
+```
+
+Approved candidates are run through one stable `AlgorithmRunnerTool`, rather
+than generating a new training tool for every model. See
+[`DAY6_LEARNING.md`](DAY6_LEARNING.md) for the fairness contract, leakage
+boundary, judge rules, feedback loop, promotion registry, real metrics, and
+exercises.

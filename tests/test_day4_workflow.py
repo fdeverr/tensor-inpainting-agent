@@ -12,6 +12,10 @@ from inpainting_research_agent.workflow_day5 import (
     Day5WorkflowConfig,
     run_day5_workflow,
 )
+from inpainting_research_agent.workflow_day6 import (
+    Day6WorkflowConfig,
+    run_day6_workflow,
+)
 
 
 def _write_small_image(path: Path) -> None:
@@ -72,3 +76,31 @@ def test_day4_fallback_selects_and_trains_a_valid_method(tmp_path):
     manifest = json.loads(Path(day5_state["artifacts"]["manifest"]).read_text())
     assert manifest["validation_status"] == "validated"
     assert manifest["eligible_for_training"] is True
+
+    day6_state = run_day6_workflow(
+        Day6WorkflowConfig(
+            base_run_dir=state["artifacts"]["run_dir"],
+            initial_candidate_dir=day5_state["artifacts"]["candidate_dir"],
+            candidate_root=str(tmp_path / "algorithms" / "candidates"),
+            approved_root=str(tmp_path / "algorithms" / "approved"),
+            output_dir=str(tmp_path / "outputs"),
+            llm_mode="off",
+            tuning_trials=1,
+            max_steps=5,
+            max_improvement_rounds=1,
+            validation_interval=1,
+            patience=5,
+            device="cpu",
+        )
+    )
+    assert day6_state["stage"] == "COMPLETED"
+    assert len(day6_state["rounds"]) == 1
+    round_result = day6_state["rounds"][0]
+    assert round_result["baseline_tuning"]["trial_count"] == 1
+    assert round_result["candidate_tuning"]["trial_count"] == 1
+    assert round_result["baseline_tuning"]["ground_truth_used"] is False
+    assert round_result["candidate_tuning"]["ground_truth_used"] is False
+    assert day6_state["stop_reason"] in {
+        "candidate_accepted",
+        "maximum_improvement_rounds_reached",
+    }

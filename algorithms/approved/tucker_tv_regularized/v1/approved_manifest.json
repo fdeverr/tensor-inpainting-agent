@@ -1,0 +1,68 @@
+{
+  "algorithm_name": "tucker_tv_regularized",
+  "version": "v1",
+  "source_candidate_id": "candidate-20260903-151313-6d4d12",
+  "source_run_id": "day6-20260904-152147-05681c",
+  "base_method": "tucker",
+  "code_sha256": "b336c1b3208c0fbb0f32b0c85b23563ea9ab8d78cb401076017a04f1bad9a00e",
+  "promoted_at": "2026-09-04T15:21:51.343656",
+  "conditions": {
+    "image_shape": [
+      64,
+      128,
+      3
+    ],
+    "mask_type": "block",
+    "actual_missing_rate": 0.4000244140625,
+    "seed": 42
+  },
+  "best_config": {
+    "hyperparameters": {
+      "init_scale": 0.2,
+      "rank_c": 2,
+      "rank_h": 32,
+      "rank_w": 32,
+      "tv_weight": 0.0005
+    },
+    "learning_rate": 0.03,
+    "selected_steps": 130
+  },
+  "comparison": {
+    "decision": "accept",
+    "accepted": true,
+    "psnr_delta": 0.723029050405426,
+    "ssim_delta": 0.08179621694199202,
+    "runtime_ratio": 1.3373624926491232,
+    "thresholds": {
+      "minimum_psnr_delta": 0.2,
+      "maximum_ssim_drop": 0.002
+    },
+    "gate_failures": [],
+    "training_behavior": {
+      "baseline_best_validation_mse": 0.006145839113742113,
+      "candidate_best_validation_mse": 0.0060352967120707035,
+      "baseline_best_step": 130,
+      "candidate_best_step": 130,
+      "candidate_selected_hyperparameters": {
+        "init_scale": 0.2,
+        "rank_c": 2,
+        "rank_h": 32,
+        "rank_w": 32,
+        "tv_weight": 0.0005
+      }
+    },
+    "suspected_causes": [
+      "The gain was positive but too small to distinguish it from a practically negligible change."
+    ],
+    "next_round_constraints": [
+      "Keep the same trial count, max steps, seed, split, device, and judge thresholds.",
+      "Do not use missing-region ground truth in generation, tuning, or checkpoint selection."
+    ],
+    "budget_audit": {
+      "baseline_trial_count": 4,
+      "candidate_trial_count": 4,
+      "baseline_total_runtime_seconds": 1.172266875000001,
+      "candidate_total_runtime_seconds": 1.5677457499999994
+    }
+  }
+}

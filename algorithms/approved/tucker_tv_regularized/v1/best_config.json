@@ -1,0 +1,11 @@
+{
+  "hyperparameters": {
+    "init_scale": 0.2,
+    "rank_c": 2,
+    "rank_h": 32,
+    "rank_w": 32,
+    "tv_weight": 0.0005
+  },
+  "learning_rate": 0.03,
+  "selected_steps": 130
+}

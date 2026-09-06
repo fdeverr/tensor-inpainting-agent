@@ -50,8 +50,9 @@ class CandidateGenerationResult:
     prompt_version: str
 
 
-def _tv_candidate_code(base_method: str) -> str:
+def _tv_candidate_code(base_method: str, tv_weights: Optional[List[float]] = None) -> str:
     base_class = BASE_CLASS_NAMES[base_method]
+    weights = tv_weights or [0.0, 0.0001, 0.0005, 0.001]
     return f'''import torch
 
 
@@ -78,14 +79,23 @@ class CandidateTensorInpaintingModel({base_class}):
     @classmethod
     def search_space(cls, image_shape):
         space = dict({base_class}.search_space(image_shape))
-        space["tv_weight"] = [0.0, 0.0001, 0.0005, 0.001]
+        space["tv_weight"] = {weights!r}
         return space
 '''
 
 
-def deterministic_candidate(base_method: str) -> CandidateProposal:
+def deterministic_candidate(
+    base_method: str,
+    previous_feedback: Optional[List[Dict[str, Any]]] = None,
+) -> CandidateProposal:
     """Safe learning-project fallback used when no code LLM is configured."""
 
+    previous_feedback = previous_feedback or []
+    tv_weights = (
+        [0.0, 0.00001, 0.00005, 0.0001]
+        if previous_feedback
+        else [0.0, 0.0001, 0.0005, 0.001]
+    )
     return CandidateProposal(
         base_method=base_method,
         hypothesis=(
@@ -107,8 +117,8 @@ def deterministic_candidate(base_method: str) -> CandidateProposal:
             "Observed-pixel validation may still be mismatched with a block hole.",
             "The extra forward regularity does not add semantic information.",
         ],
-        search_space={"tv_weight": [0.0, 0.0001, 0.0005, 0.001]},
-        model_code=_tv_candidate_code(base_method),
+        search_space={"tv_weight": tv_weights},
+        model_code=_tv_candidate_code(base_method, tv_weights=tv_weights),
         generation_mode="deterministic_template",
     )
 
@@ -262,7 +272,10 @@ class CandidateGenerator:
             else "LLM proposal remained invalid after one repair attempt"
         )
         return CandidateGenerationResult(
-            proposal=deterministic_candidate(context["base_method"]),
+            proposal=deterministic_candidate(
+                context["base_method"],
+                previous_feedback=context.get("previous_failure_feedback"),
+            ),
             attempts=len(raw_outputs),
             raw_outputs=raw_outputs,
             validation_errors=errors,

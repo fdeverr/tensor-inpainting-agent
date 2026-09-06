@@ -7,7 +7,7 @@ import math
 import random
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -15,6 +15,33 @@ import torch
 from ..schemas import TrainingConfig
 from .masks import split_observed_mask
 from .models import create_model
+
+
+ModelBuilder = Callable[
+    [Tuple[int, int, int], Sequence[float], Dict[str, Any]],
+    torch.nn.Module,
+]
+
+
+def _build_model(
+    model_name: str,
+    image_shape: Tuple[int, int, int],
+    initial_channel_mean: Sequence[float],
+    model_hyperparameters: Dict[str, Any],
+    model_builder: Optional[ModelBuilder],
+) -> torch.nn.Module:
+    if model_builder is not None:
+        return model_builder(
+            image_shape,
+            initial_channel_mean,
+            model_hyperparameters,
+        )
+    return create_model(
+        model_name=model_name,
+        image_shape=image_shape,
+        initial_channel_mean=initial_channel_mean,
+        hyperparameters=model_hyperparameters,
+    )
 
 
 @dataclass
@@ -103,6 +130,7 @@ def train_tensor_model(
     observed_mask: np.ndarray,
     config: TrainingConfig,
     seed: int,
+    model_builder: Optional[ModelBuilder] = None,
 ) -> TrainingOutput:
     """Fit one tensor model without access to artificially hidden ground truth."""
 
@@ -118,11 +146,12 @@ def train_tensor_model(
 
     # Initialization statistics use training pixels only, not validation pixels.
     initial_channel_mean = observed_image[train_mask_np].mean(axis=0)
-    model = create_model(
+    model = _build_model(
         model_name=model_name,
         image_shape=tuple(observed_image.shape),
         initial_channel_mean=initial_channel_mean,
-        hyperparameters=model_hyperparameters,
+        model_hyperparameters=model_hyperparameters,
+        model_builder=model_builder,
     ).to(device)
 
     observed = torch.as_tensor(observed_image, dtype=torch.float32, device=device)
@@ -226,6 +255,7 @@ def fit_tensor_model_on_all_observations(
     config: TrainingConfig,
     selected_steps: int,
     seed: int,
+    model_builder: Optional[ModelBuilder] = None,
 ) -> FinalFitOutput:
     """Refit a selected model using 100% of the genuinely observed pixels.
 
@@ -242,11 +272,12 @@ def fit_tensor_model_on_all_observations(
     set_reproducibility(seed, config.deterministic)
     device = resolve_device(config.device)
     initial_channel_mean = observed_image[observed_mask].mean(axis=0)
-    model = create_model(
+    model = _build_model(
         model_name=model_name,
         image_shape=tuple(observed_image.shape),
         initial_channel_mean=initial_channel_mean,
-        hyperparameters=model_hyperparameters,
+        model_hyperparameters=model_hyperparameters,
+        model_builder=model_builder,
     ).to(device)
     observed = torch.as_tensor(observed_image, dtype=torch.float32, device=device)
     fit_mask = torch.as_tensor(observed_mask, dtype=torch.bool, device=device)

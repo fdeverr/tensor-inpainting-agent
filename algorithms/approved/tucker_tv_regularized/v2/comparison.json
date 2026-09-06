@@ -1,0 +1,33 @@
+{
+  "decision": "accept",
+  "accepted": true,
+  "psnr_delta": 0.723029050405426,
+  "ssim_delta": 0.08179621694199202,
+  "runtime_ratio": 1.235314444776811,
+  "thresholds": {
+    "minimum_psnr_delta": 0.2,
+    "maximum_ssim_drop": 0.002
+  },
+  "gate_failures": [],
+  "training_behavior": {
+    "baseline_best_validation_mse": 0.006145839113742113,
+    "candidate_best_validation_mse": 0.0060352967120707035,
+    "baseline_best_step": 130,
+    "candidate_best_step": 130,
+    "candidate_selected_hyperparameters": {
+      "init_scale": 0.2,
+      "rank_c": 2,
+      "rank_h": 32,
+      "rank_w": 32,
+      "tv_weight": 0.0005
+    }
+  },
+  "suspected_causes": [],
+  "next_round_constraints": [],
+  "budget_audit": {
+    "baseline_trial_count": 4,
+    "candidate_trial_count": 4,
+    "baseline_total_runtime_seconds": 1.3269082070000002,
+    "candidate_total_runtime_seconds": 1.6391488749999992
+  }
+}

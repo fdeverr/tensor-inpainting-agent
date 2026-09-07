@@ -206,12 +206,12 @@ pytest -q
 
 ## 学习记录
 
-- [Day 1：可信插值基线](DAY1_LEARNING.md)
-- [Day 2：张量分解模型与两阶段训练](DAY2_LEARNING.md)
-- [Day 3：Hello Agents Tools 与状态机](DAY3_LEARNING.md)
-- [Day 4：知识检索与方法选择](DAY4_LEARNING.md)
-- [Day 5：候选代码生成与验证](DAY5_LEARNING.md)
-- [Day 6：公平实验、反馈迭代与晋升](DAY6_LEARNING.md)
-- [Day 7：端到端交付、Benchmark 与求职展示](DAY7_LEARNING.md)
+- [Day 1：可信插值基线](notes/DAY1_LEARNING.md)
+- [Day 2：张量分解模型与两阶段训练](notes/DAY2_LEARNING.md)
+- [Day 3：Hello Agents Tools 与状态机](notes/DAY3_LEARNING.md)
+- [Day 4：知识检索与方法选择](notes/DAY4_LEARNING.md)
+- [Day 5：候选代码生成与验证](notes/DAY5_LEARNING.md)
+- [Day 6：公平实验、反馈迭代与晋升](notes/DAY6_LEARNING.md)
+- [Day 7：端到端交付、Benchmark 与求职展示](notes/DAY7_LEARNING.md)
 
-2～3 分钟录屏提纲见 [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md)。
+2～3 分钟录屏提纲见 [`DEMO_SCRIPT.md`](notes/DEMO_SCRIPT.md)。

@@ -1,0 +1,59 @@
+{
+  "algorithm_name": "matrix_tv_regularized",
+  "version": "v1",
+  "source_candidate_id": "candidate-20260906-163316-1f809c",
+  "source_run_id": "day6-20260906-163319-cfa4c5",
+  "base_method": "matrix",
+  "code_sha256": "bc69df788cfd6e150a1af12ce11caa6d839eae918a1532d7e3e944402aa21a02",
+  "promoted_at": "2026-09-06T16:33:20.274716",
+  "conditions": {
+    "image_shape": [
+      32,
+      64,
+      3
+    ],
+    "mask_type": "random",
+    "actual_missing_rate": 0.39990234375,
+    "seed": 42
+  },
+  "best_config": {
+    "hyperparameters": {
+      "init_scale": 0.1,
+      "rank": 32,
+      "tv_weight": 0.001
+    },
+    "learning_rate": 0.03,
+    "selected_steps": 50
+  },
+  "comparison": {
+    "decision": "accept",
+    "accepted": true,
+    "psnr_delta": 0.43402354334744686,
+    "ssim_delta": 0.0458692442455364,
+    "runtime_ratio": 2.973079450863509,
+    "thresholds": {
+      "minimum_psnr_delta": 0.2,
+      "maximum_ssim_drop": 0.002
+    },
+    "gate_failures": [],
+    "training_behavior": {
+      "baseline_best_validation_mse": 0.02519240230321884,
+      "candidate_best_validation_mse": 0.02140718698501587,
+      "baseline_best_step": 20,
+      "candidate_best_step": 50,
+      "candidate_selected_hyperparameters": {
+        "init_scale": 0.1,
+        "rank": 32,
+        "tv_weight": 0.001
+      }
+    },
+    "suspected_causes": [],
+    "next_round_constraints": [],
+    "budget_audit": {
+      "baseline_trial_count": 2,
+      "candidate_trial_count": 2,
+      "baseline_total_runtime_seconds": 0.03710604100000037,
+      "candidate_total_runtime_seconds": 0.11031920799999995
+    }
+  }
+}

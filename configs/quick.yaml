@@ -3,4 +3,16 @@ image_size: 128
 mask_type: block
 missing_rate: 0.4
 missing_fill_value: 0.0
-
+method_max_steps: 200
+fair_max_steps: 200
+tuning_trials: 4
+max_improvement_rounds: 2
+validation_ratio: 0.1
+validation_interval: 10
+patience: 20
+retrieval_top_k: 8
+minimum_psnr_delta: 0.2
+ssim_tolerance: 0.002
+smoke_timeout_seconds: 10.0
+device: auto
+llm_mode: auto

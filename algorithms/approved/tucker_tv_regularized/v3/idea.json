@@ -1,0 +1,30 @@
+{
+  "base_method": "tucker",
+  "hypothesis": "Adding a small differentiable total-variation penalty to the selected tensor decomposition may reduce the banding and abrupt spatial changes observed inside a contiguous missing region.",
+  "proposed_changes": [
+    "Keep every factor and core parameter from the selected baseline.",
+    "Add horizontal and vertical image-space total variation to loss_terms().",
+    "Expose tv_weight as a bounded tunable hyperparameter."
+  ],
+  "expected_effect": "The candidate should favour spatially coherent reconstructions while retaining the global low-rank structure of the base method.",
+  "risks": [
+    "An excessive TV weight can oversmooth edges and textures.",
+    "Observed-pixel validation may still be mismatched with a block hole.",
+    "The extra forward regularity does not add semantic information."
+  ],
+  "search_space": {
+    "tv_weight": [
+      0.0,
+      0.0001,
+      0.0005,
+      0.001
+    ]
+  },
+  "generation_mode": "deterministic_template",
+  "candidate_id": "candidate-20260906-163256-7a1937",
+  "prompt_version": "day5-candidate-v1",
+  "generation_attempts": 0,
+  "fallback_reason": "LLM is not configured",
+  "schema_validation_errors": [],
+  "raw_outputs": []
+}

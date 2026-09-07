@@ -1,0 +1,37 @@
+{
+  "source_run_id": "research-agent-20260906-163255-811438",
+  "image": "assets/example.png",
+  "mask_type": "block",
+  "missing_rate": 0.4000244140625,
+  "seed": 42,
+  "budget": {
+    "baseline_tuning_trials": 4,
+    "candidate_tuning_trials": 4,
+    "max_steps_per_trial": 200
+  },
+  "results": [
+    {
+      "algorithm": "nearest_neighbor_manhattan",
+      "missing_psnr": 15.061807379288659,
+      "composite_ssim": 0.7270729028072346,
+      "parameter_count": 0
+    },
+    {
+      "algorithm": "tucker",
+      "missing_psnr": 12.790319617439858,
+      "composite_ssim": 0.626918413274074,
+      "runtime_seconds": 0.09851362499999983,
+      "parameter_count": 8201
+    },
+    {
+      "algorithm": "tucker_tv_regularized",
+      "missing_psnr": 13.513348667845284,
+      "composite_ssim": 0.7087146302160661,
+      "runtime_seconds": 0.28823704199999955,
+      "parameter_count": 8201,
+      "promotion_decision": "accept"
+    }
+  ],
+  "best_output_algorithm": "nearest_neighbor_manhattan",
+  "evidence_boundary": "One image and one mask configuration; not a generalization or SOTA claim."
+}

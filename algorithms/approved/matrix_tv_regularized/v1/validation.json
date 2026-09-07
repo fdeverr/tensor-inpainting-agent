@@ -1,0 +1,63 @@
+{
+  "passed": true,
+  "status": "validated",
+  "code_sha256": "bc69df788cfd6e150a1af12ce11caa6d839eae918a1532d7e3e944402aa21a02",
+  "static_validation": {
+    "passed": true,
+    "checks": [
+      {
+        "name": "ast_parse",
+        "passed": true
+      },
+      {
+        "name": "import_and_call_policy",
+        "passed": true
+      },
+      {
+        "name": "candidate_contract",
+        "passed": true
+      }
+    ],
+    "errors": []
+  },
+  "smoke_test": {
+    "passed": true,
+    "forward_shape": [
+      16,
+      16,
+      3
+    ],
+    "dtype": "torch.float32",
+    "loss_terms": [
+      "data_loss",
+      "tv_regularization"
+    ],
+    "finite_gradient_parameter_count": 3,
+    "parameter_count": 1027,
+    "search_space": {
+      "rank": [
+        4,
+        8,
+        16
+      ],
+      "init_scale": [
+        0.05,
+        0.1,
+        0.2
+      ],
+      "tv_weight": [
+        0.0,
+        0.0001,
+        0.0005,
+        0.001
+      ]
+    },
+    "optimizer_step_changed_parameter": true,
+    "skipped": false,
+    "return_code": 0,
+    "stderr": ""
+  },
+  "feedback": [],
+  "runtime_seconds": 3.149187208,
+  "safety_note": "AST checks and an isolated process are MVP guardrails, not a production-grade security sandbox."
+}

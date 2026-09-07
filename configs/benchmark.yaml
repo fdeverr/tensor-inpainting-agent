@@ -1,0 +1,10 @@
+seed: 42
+image_size: 128
+mask_types: [random, block]
+missing_rates: [0.3, 0.5]
+method_max_steps: 200
+fair_max_steps: 200
+tuning_trials: 4
+max_improvement_rounds: 2
+device: auto
+llm_mode: off
